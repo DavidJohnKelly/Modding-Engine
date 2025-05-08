@@ -16,3 +16,6 @@ build/
 
 android/
 .vs/
+*.uid
+*.sln
+*.csproj
