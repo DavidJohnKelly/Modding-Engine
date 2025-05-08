@@ -1,0 +1,18 @@
+# Godot build artifacts
+export/
+build/
+
+# User-specific files
+.godot/
+.import/
+
+# Temporary files
+*.tmp
+*.log
+
+# Godot specific patterns
+*.import
+*.godot
+
+android/
+.vs/
