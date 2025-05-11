@@ -17,9 +17,9 @@ namespace ModdingEngine
 	{
 		private class ModMetaData
 		{
-			public string Name;
-			public int Priority;
-			public Dictionary<string, string> Overrides;
+			public required string Name;
+			public required int Priority;
+			public required Dictionary<string, string> Overrides;
 		}
 
 		// List of loaded mods, sorted by priority
@@ -33,6 +33,7 @@ namespace ModdingEngine
 			Debug.WriteLine("Entered Mod Manager");
 			ScanAndLoadMods();
 			RegisterAllOverrides();
+			Debug.WriteLine("FINISHED");
 		}
 
 		/// <summary>

@@ -1,0 +1,30 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="Modding Engine"
+run/main_scene="uid://0pglhwptyyi4"
+config/use_custom_user_dir=true
+config/custom_user_dir_name=".skycraft"
+config/features=PackedStringArray("4.4", "C#", "Mobile")
+config/icon="res://icon.svg"
+
+[autoload]
+
+ModManager="*res://autoload/ModManager.cs"
+
+[dotnet]
+
+project/assembly_name="Modding Engine"
+
+[rendering]
+
+renderer/rendering_method="mobile"
