@@ -1,20 +1,21 @@
-using Godot;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using Godot;
 
-namespace ModdingEngine
+namespace ModdingEngine.autoload
 {
+
 	/// <summary>
 	/// ModManager singleton for scanning, loading, and managing mod overrides.
 	/// Scans user://mods for .pck files, loads them, registers overrides, and
 	/// provides a LoadGameResource method that respects mod priorities.
 	/// </summary>
-	[Tool]
 	public partial class ModManager : Node
 	{
+		public static ModManager Instance { get; private set; }
+
 		private class ModMetaData
 		{
 			public required string Name;
@@ -30,10 +31,12 @@ namespace ModdingEngine
 
 		public override void _Ready()
 		{
-			Debug.WriteLine("Entered Mod Manager");
+			Instance ??= this;
+
+			GD.Print("Entered Mod Manager");
 			ScanAndLoadMods();
 			RegisterAllOverrides();
-			Debug.WriteLine("FINISHED");
+			GD.Print("FINISHED");
 		}
 
 		/// <summary>

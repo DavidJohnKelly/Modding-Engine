@@ -25,6 +25,10 @@ ModManager="*res://autoload/ModManager.cs"
 
 project/assembly_name="Modding Engine"
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/exporter/plugin.cfg")
+
 [rendering]
 
 renderer/rendering_method="mobile"
