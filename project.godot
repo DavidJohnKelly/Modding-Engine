@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Modding Engine"
-run/main_scene="uid://0pglhwptyyi4"
+run/main_scene="uid://cqpa5rwii7dqx"
 config/use_custom_user_dir=true
 config/custom_user_dir_name=".skycraft"
 config/features=PackedStringArray("4.4", "C#", "Mobile")

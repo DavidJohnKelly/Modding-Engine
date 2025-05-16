@@ -19,8 +19,8 @@ namespace ModdingEngine.autoload
 		private class ModMetaData
 		{
 			public required string Name;
-			public required int Priority;
-			public required Dictionary<string, string> Overrides;
+			//public required int Priority;
+			//public required Dictionary<string, string> Overrides;
 		}
 
 		// List of loaded mods, sorted by priority
@@ -33,10 +33,8 @@ namespace ModdingEngine.autoload
 		{
 			Instance ??= this;
 
-			GD.Print("Entered Mod Manager");
 			ScanAndLoadMods();
 			RegisterAllOverrides();
-			GD.Print("FINISHED");
 		}
 
 		/// <summary>
@@ -53,55 +51,11 @@ namespace ModdingEngine.autoload
 
 			foreach (string file in Directory.GetFiles(globalModsPath, "*.pck"))
 			{
-				// Load the pack
-				if (!ProjectSettings.LoadResourcePack(Path.Combine("user://mods", Path.GetFileName(file))))
-				{
-					GD.PushError($"ModManager: Failed to load mod '{file}'");
-					continue;
-				}
-
-				// Attempt to read the manifest from inside the pack
-				string manifestPath = $"user://mods/{Path.GetFileNameWithoutExtension(file)}/mod.json";
-
-				if (!File.Exists(manifestPath))
-				{
-					GD.PushWarning($"ModManager: mod.json not found for '{file}'");
-					continue;
-				}
-
-				try
-				{
-					string jsonText = File.ReadAllText(manifestPath);
-					Variant jsonParsed = Json.ParseString(jsonText);
-
-					if (jsonParsed.VariantType != Variant.Type.Dictionary)
-					{
-						GD.PrintErr("ModManager: JSON root is not a Dictionary.");
-						return;
-					}
-
-					var jsonData = jsonParsed.AsGodotDictionary();
-
-					var meta = new ModMetaData
-					{
-						Name = jsonData["name"].AsString(),
-						Priority = jsonData["priority"].AsInt16(),
-						Overrides = new Dictionary<string, string>(
-							jsonData["overrides"].AsGodotDictionary<string, string>()
-								.ToDictionary(kv => kv.Key, kv => kv.Value)
-						)
-					};
-
-					_mods.Add(meta);
-				}
-				catch (Exception e)
-				{
-					GD.PushError($"ModManager: Error parsing manifest for '{file}': {e}");
-				}
+				LoadFile(file);
 			}
 
 			// Sort mods by ascending priority so highest loads last
-			_mods = [.. _mods.OrderBy(m => m.Priority)];
+			//_mods = [.. _mods.OrderBy(m => m.Priority)];
 		}
 
 		/// <summary>
@@ -112,14 +66,72 @@ namespace ModdingEngine.autoload
 		{
 			foreach (ModMetaData mod in _mods)
 			{
-				foreach (KeyValuePair<string, string> kv in mod.Overrides)
-				{
-					if (!_overrideRegistry.ContainsKey(kv.Key))
-						_overrideRegistry[kv.Key] = [];
+				//foreach (KeyValuePair<string, string> kv in mod.Overrides)
+				//{
+				//	if (!_overrideRegistry.ContainsKey(kv.Key))
+				//		_overrideRegistry[kv.Key] = [];
+				//
+				//	_overrideRegistry[kv.Key].Add((mod.Name, mod.Priority, kv.Value));
+				//	_overrideRegistry[kv.Key] = [.. _overrideRegistry[kv.Key].OrderBy(tuple => tuple.priority)];
+				//}
+			}
+		}
 
-					_overrideRegistry[kv.Key].Add((mod.Name, mod.Priority, kv.Value));
-					_overrideRegistry[kv.Key] = [.. _overrideRegistry[kv.Key].OrderBy(tuple => tuple.priority)];
+		private void LoadFile(string file)
+		{
+			// Load the pack
+			if (!ProjectSettings.LoadResourcePack(file))
+			{
+				GD.PushError($"ModManager: Failed to load: '{file}'");
+				return;
+			}
+
+			string modName = Path.GetFileNameWithoutExtension(file);
+			GD.Print($"Loading mod: {modName}");
+
+			//ListFiles($"res://{modName}");
+
+			// Attempt to read the manifest from inside the pack
+			string manifestPath = $"res://{modName}/mod.json";
+			GD.Print($"Manifest path: {manifestPath}");
+			if (!ResourceLoader.Exists(manifestPath))
+			{
+				GD.PushWarning($"ModManager: mod.json not found for mod '{modName}'");
+				return;
+			}
+
+			try
+			{
+				var manifestFile = Godot.FileAccess.Open(manifestPath, Godot.FileAccess.ModeFlags.Read);
+				var content = manifestFile.GetAsText();
+				Variant jsonParsed = Json.ParseString(content);
+
+				if (jsonParsed.VariantType != Variant.Type.Dictionary)
+				{
+					GD.PrintErr("ModManager: JSON root is not a Dictionary.");
+					return;
 				}
+
+				var jsonData = jsonParsed.AsGodotDictionary();
+
+				var meta = new ModMetaData
+				{
+					Name = jsonData["name"].AsString(),
+					//Priority = jsonData["load_order"].AsInt16(),
+					//Overrides = new Dictionary<string, string>(
+					//	jsonData["overrides"].AsGodotDictionary<string, string>()
+					//		.ToDictionary(kv => kv.Key, kv => kv.Value)
+					//)
+				};
+
+				GD.Print($"Added mod: {meta.Name}");
+
+				_mods.Add(meta);
+
+			}
+			catch (Exception e)
+			{
+				GD.PushError($"ModManager: Error parsing manifest for '{file}': {e}");
 			}
 		}
 
@@ -135,6 +147,42 @@ namespace ModdingEngine.autoload
 				path = list.Last().path;
 
 			return ResourceLoader.Load(path);
+		}
+
+
+		public static void ListFiles(string path)
+		{
+			DirAccess dir = DirAccess.Open(path);
+			if (dir == null)
+			{
+				GD.PrintErr($"Failed to open directory: {path}");
+				return;
+			}
+
+			dir.ListDirBegin();
+			string fileName = dir.GetNext();
+			while (!string.IsNullOrEmpty(fileName))
+			{
+				if (fileName == "." || fileName == "..")
+				{
+					fileName = dir.GetNext();
+					continue;
+				}
+
+				string filePath = $"{path}/{fileName}";
+				if (dir.CurrentIsDir())
+				{
+					GD.Print($"Directory: {filePath}");
+					ListFiles(filePath); // Recursive call
+				}
+				else
+				{
+					GD.Print($"File: {filePath}");
+				}
+
+				fileName = dir.GetNext();
+			}
+			dir.ListDirEnd();
 		}
 	}
 }

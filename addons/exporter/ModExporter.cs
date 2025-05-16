@@ -1,64 +1,99 @@
 using Godot;
+using System;
+using System.IO;
+using Godot.Collections;
 
 namespace ModdingEngine.addons.exporter
 {
 	public static partial class ModExporter
 	{
-		public static void ExportMod(string outputPath)
+		/// <summary>
+		/// Exports the specified mod folder into a .pck file at the given output path.
+		/// </summary>
+		/// <param name="sourceFolder">Godot resource path to the mod folder, e.g. "res://MyMod".</param>
+		/// <param name="outputPath">Filesystem or resource path where the .pck will be saved, e.g. "res://MyMod.pck".</param>
+		public static void ExportMod(string sourceFolder, string outputPath)
 		{
+			// Derive folder name from the source folder (e.g. "MyMod")
+			string modName = GetModName(outputPath);
+
 			var packer = new PckPacker();
-			Error err = packer.PckStart(outputPath);
-			if (err != Error.Ok)
+			Error startErr = packer.PckStart(outputPath);
+			if (startErr != Error.Ok)
 			{
-				GD.PrintErr($"Failed to start PCK packer: {err}");
+				GD.PrintErr($"Failed to start PCK packer for '{outputPath}': {startErr}");
 				return;
 			}
 
-			AddDirectoryToPck(packer, "res://mod", "mod");
+			// Recursively add the directory under its folder name in the pack
+			AddDirectoryToPck(packer, sourceFolder, modName);
 
-			err = packer.Flush();
-			if (err != Error.Ok)
+			Error flushErr = packer.Flush();
+			if (flushErr != Error.Ok)
 			{
-				GD.PrintErr($"Failed to flush PCK packer: {err}");
+				GD.PrintErr($"Failed to flush PCK packer for '{outputPath}': {flushErr}");
 				return;
 			}
 
-			GD.Print($"Mod exported successfully to {outputPath}");
+			GD.Print($"Mod '{modName}' exported successfully to '{outputPath}'");
 		}
 
-		private static void AddDirectoryToPck(PckPacker packer, string dirPath, string pckPath)
+		/// <summary>
+		/// Gets the folder name from a Godot resource path.
+		/// Converts "res://SomeFolder" to the actual directory name "SomeFolder".
+		/// </summary>
+		private static string GetModName(string resPath)
+		{
+			string systemPath = ProjectSettings.GlobalizePath(resPath);
+			string pathName = new DirectoryInfo(systemPath).Name;
+			string modName = Path.GetFileNameWithoutExtension(pathName);
+			return modName;
+		}
+
+		/// <summary>
+		/// Adds all files and subdirectories from dirPath into the PCK under pckRoot.
+		/// </summary>
+		private static void AddDirectoryToPck(PckPacker packer, string dirPath, string pckRoot)
 		{
 			var dir = DirAccess.Open(dirPath);
 			if (dir == null)
 			{
-				GD.PrintErr($"Cannot open directory: {dirPath}");
+				GD.PrintErr($"Cannot open mod directory: '{dirPath}'");
 				return;
 			}
 
 			dir.ListDirBegin();
-			string fileName = dir.GetNext();
-			while (!string.IsNullOrEmpty(fileName))
+			string entry = dir.GetNext();
+			while (!string.IsNullOrEmpty(entry))
 			{
-				if (fileName == "." || fileName == "..")
+				if (entry == "." || entry == "..")
 				{
-					fileName = dir.GetNext();
+					entry = dir.GetNext();
 					continue;
 				}
 
-				string fullPath = $"{dirPath}/{fileName}";
-				string fullPckPath = $"{pckPath}/{fileName}";
+				string fullResPath = $"{dirPath}/{entry}";
+				string packPath = $"{pckRoot}/{entry}";
 
 				if (dir.CurrentIsDir())
 				{
-					AddDirectoryToPck(packer, fullPath, fullPckPath);
+					AddDirectoryToPck(packer, fullResPath, packPath);
 				}
 				else
 				{
-					GD.Print($"added file: {fullPath} to: {fullPckPath}", fullPath, fullPckPath);
-					packer.AddFile($"res://{fullPckPath}", fullPath);
+					if (Godot.FileAccess.FileExists(fullResPath))
+					{
+						Error addErr = packer.AddFile($"res://{packPath}", fullResPath);
+						if (addErr != Error.Ok)
+							GD.PrintErr($"Failed to add file '{fullResPath}' to pack: {addErr}");
+					}
+					else
+					{
+						GD.PrintErr($"File '{fullResPath}' does not exist, skipping.");
+					}
 				}
 
-				fileName = dir.GetNext();
+				entry = dir.GetNext();
 			}
 			dir.ListDirEnd();
 		}
